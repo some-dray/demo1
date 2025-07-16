@@ -18,6 +18,9 @@ Let's start by scanning the `python:latest` image for vulnerabilities using `gry
 
 ```bash
 grype python:latest
+grype python:3.14.0b4-slim-bullseye
+grype nginx:latest
+grype openjdk:18-jdk-slim	
 ```
 
 The scan of `python:latest` reveals a large number of vulnerabilities:
@@ -40,6 +43,8 @@ Now, let's scan the Chainguard Python image.
 
 ```bash
 grype cgr.dev/chainguard/python:latest
+grype cgr.dev/chainguard/nginx:latest
+grype cgr.dev/chainguard/jdk:latest
 ```
 
 The scan of the Chainguard image shows a significant reduction in vulnerabilities:
