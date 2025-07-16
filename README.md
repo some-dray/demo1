@@ -79,11 +79,10 @@ This confirms that the image was signed by Chainguard's official build process a
 Chainguard images include a Software Bill of Materials (SBOM), which provides a complete inventory of the software components in the image. You can download the SBOM using `cosign`.
 
 ```bash
-cosign verify-attestation \
-  --type https://spdx.dev/Document \
-  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-  --certificate-identity=https://github.com/chainguard-images/images/.github/workflows/release.yaml@refs/heads/main \
-  cgr.dev/chainguard/python
+cosign download attestation \
+  --platform=linux/amd64 \
+  --predicate-type=https://spdx.dev/Document \
+  cgr.dev/chainguard/python | jq -r .payload | base64 -d | jq .predicate
 ```
 
 This command will download a JSON file containing the SBOM. You can then inspect this file to see all the packages and their versions included in the image. This is invaluable for security audits and compliance checks.
