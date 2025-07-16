@@ -56,7 +56,10 @@ This stark contrast highlights the security benefits of using Chainguard images,
 Chainguard images are signed with `cosign`, allowing you to verify their authenticity. To verify the signature of the Chainguard Python image, you need to provide the correct certificate identity and OIDC issuer.
 
 ```bash
-cosign verify cgr.dev/chainguard/python:latest --certificate-identity-regexp "https://github.com/chainguard-images/images/.github/workflows/release.yaml@refs/heads/main" --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+cosign verify \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  --certificate-identity=https://github.com/chainguard-images/images/.github/workflows/release.yaml@refs/heads/main \
+  cgr.dev/chainguard/python | jq
 ```
 
 Successful verification will produce output similar to the following:
@@ -76,7 +79,11 @@ This confirms that the image was signed by Chainguard's official build process a
 Chainguard images include a Software Bill of Materials (SBOM), which provides a complete inventory of the software components in the image. You can download the SBOM using `cosign`.
 
 ```bash
-cosign download sbom cgr.dev/chainguard/python:latest
+cosign verify-attestation \
+  --type https://spdx.dev/Document \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  --certificate-identity=https://github.com/chainguard-images/images/.github/workflows/release.yaml@refs/heads/main \
+  cgr.dev/chainguard/python
 ```
 
 This command will download a JSON file containing the SBOM. You can then inspect this file to see all the packages and their versions included in the image. This is invaluable for security audits and compliance checks.
@@ -125,26 +132,30 @@ CMD ["flask", "run", "--host=0.0.0.0"]
 
 ```dockerfile
 # Build stage
-FROM python:3.11-slim as builder
+FROM cgr.dev/chainguard/python:latest-dev AS builder
 
 WORKDIR /app
 
 COPY app/ /app
 
-RUN pip install --target=/app/packages Flask
+RUN python -m venv venv
+ENV PATH="/app/venv/bin":$PATH
+
+RUN pip install Flask
 
 # Final stage
 FROM cgr.dev/chainguard/python:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/packages /usr/lib/python3.11/site-packages
+COPY --from=builder /app/venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
 
 COPY app/ /app
 
 EXPOSE 5000
 
-CMD ["/usr/bin/python", "app.py"]
+ENTRYPOINT ["python", "app.py"]
 ```
 
 ## Building and Running the Containers
@@ -154,11 +165,14 @@ CMD ["/usr/bin/python", "app.py"]
 ```bash
 docker build -t python-app -f Dockerfile.python .
 docker run -d -p 5000:5000 python-app
+docker stop python-app
+docker run -it -p 5000:5000 python-app bash
 ```
 
 ### Chainguard Image
 
 ```bash
 docker build -t chainguard-app -f Dockerfile.chainguard .
-docker run -d -p 5001:5000 chainguard-app
+docker run -d -p 5002:5000 chainguard-app
+docker stop chainguard-app
 ```
